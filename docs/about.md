@@ -80,6 +80,7 @@ The list of constributors can be found [there](https://github.com/sebcrozet/ncol
 
 * 8zu
 * Anselm Eickhoff
+* Alexander Atman
 * Camille Viot
 * Jac
 * Jan Nockemann
@@ -87,9 +88,12 @@ The list of constributors can be found [there](https://github.com/sebcrozet/ncol
 * J. Ryan Stinnett
 * Kasper Møller Andersen
 * Kyle Gretchev
+* Kjetil Kjeka
 * Mark Stacey
 * Olivier Saut
+* Rick Richardson
 * Sanghyeon Seo
+* Trym Nilsen
 * Wesley Wiser
 * Zane
 * [Alexander Mistakidis](https://github.com/aamistak)
