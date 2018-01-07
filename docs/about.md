@@ -83,8 +83,11 @@ The list of constributors can be found [there](https://github.com/sebcrozet/ncol
 * Alexander Atman
 * Camille Viot
 * Jac
+* Jack Wrenn
 * Jan Nockemann
+* Jason Knight
 * Jeb Brooks
+* Jeff Parsons
 * J. Ryan Stinnett
 * Kasper Møller Andersen
 * Kyle Gretchev
@@ -94,6 +97,7 @@ The list of constributors can be found [there](https://github.com/sebcrozet/ncol
 * Rick Richardson
 * Sanghyeon Seo
 * Trym Nilsen
+* Ty Overby
 * Wesley Wiser
 * Zane
 * [Alexander Mistakidis](https://github.com/aamistak)
