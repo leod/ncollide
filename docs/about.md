@@ -93,11 +93,13 @@ The list of constributors can be found [there](https://github.com/sebcrozet/ncol
 * Kyle Gretchev
 * Kjetil Kjeka
 * Mark Stacey
+* Nerijus Arlauskas
 * Olivier Saut
 * Rick Richardson
 * Sanghyeon Seo
 * Trym Nilsen
 * Ty Overby
+* Vikentiy Fesunov
 * Wesley Wiser
 * Zane
 * [Alexander Mistakidis](https://github.com/aamistak)
