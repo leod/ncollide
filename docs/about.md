@@ -79,6 +79,7 @@ The list of constributors can be found [there](https://github.com/sebcrozet/ncol
 
 
 * 8zu
+* Adam Rzepka
 * Anselm Eickhoff
 * Alexander Atman
 * Camille Viot
@@ -87,6 +88,7 @@ The list of constributors can be found [there](https://github.com/sebcrozet/ncol
 * Jan Nockemann
 * Jason Knight
 * Jeb Brooks
+* Jeff Muizelaar
 * Jeff Parsons
 * J. Ryan Stinnett
 * Kasper Møller Andersen
@@ -97,6 +99,7 @@ The list of constributors can be found [there](https://github.com/sebcrozet/ncol
 * Olivier Saut
 * Rick Richardson
 * Sanghyeon Seo
+* Simon N Heath
 * Trym Nilsen
 * Ty Overby
 * Vikentiy Fesunov
