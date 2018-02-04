@@ -7,3 +7,4 @@ target
 run.sh
 doc
 docs/rustdoc
+site
