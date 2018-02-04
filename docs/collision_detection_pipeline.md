@@ -30,9 +30,9 @@ added, removed, and updated.
 
 | Method                 | Description                                     |
 |--                      | --                                              |
-| `.deferred_add(uid, bv, data)`                    | Informs the broad phase algorithm that a new object with the identifier `uid`, the bounding volume `bv`, and the associated data `data` has to be added during the next update. |
-| `.deferred_remove(uid)`                           | Informs the broad phase algorithm that the object identified by `uid` must be removed at the next update. |
-| `.deferred_set_bounding_volume(uid, bv)`          | Informs the broad phase algorithm that the bounding volume of the object identified by `uid` has to be replaced by `bv` at the next update. |
+| `.create_proxy(bv, data)`                    | Adds a new object with the bounding volume `bv`, and the _associated data_ `data` to the narrow phase. Returns an handle identifying the object inside of the broad-phase. |
+| `.remove(handle, callback)`                           | Removes from the broad-phase the object identified by `handle`. The `callback` is executed on all proximity pairs that involved the removed object at the last update. |
+| `.deferred_set_bounding_volume(handle, bv)`          | Informs the broad phase algorithm that the bounding volume of the object identified by `handle` has to be replaced by `bv` at the next call to `.update(...)`. |
 | `.deferred_recompute_all_proximities()` | Forces the broad phase to recompute all collision pairs at the next update. |
 | `.update(filter, callback)`                       | Updates this broad phase algorithm, actually performing pending object additions and removals. `filter` is a predicate that indicates if a new potential collision pair is valid. If it returns `true` for a given pair, `callback` will be called. |
 | `.interferences_with_bounding_volume(bv, result)` | Fills `result` with references to each object which bounding volume intersects the bounding volume `bv`. |
@@ -40,14 +40,14 @@ added, removed, and updated.
 | `.interferences_with_point(point, result)`        | Fills `result` with references to each object which bounding volume contains `point`. |
 
 Let us clarify what _associated data_ means here. A broad phase is guaranteed
-to associate some pieces of data to each object. Those data are completely
+to associate some pieces of data to each object. Those are completely
 user-defined (e.g. they can even be as general as `Box<Any>`) and are passed as
 argument to the user-defined callbacks when the `update` method is called.
 Therefore, feel free to store in there anything that may be useful to identify
 the object on your side.
 
 Note that methods with names prefixed by `deferred_` have no effect until the
-next call to `.update(...)`. This allows the broad phase to perform one global
+next call to `.update(...)`. This allows the broad phase to perform, e.g., one global
 update even if several objects are moved individually. This update relies on a
 collision filter and a callback. First, the filter should always have results
 constant wrt. time. _Constant_ means that if at some time the filter returns
@@ -66,13 +66,6 @@ Finally, a broad phase algorithm being inherently incremental, the `callback`
 will usually be called only once on each new potential contact pair created or
 removed as a consequence of filter change or objects being moved. Pairs
 unaffected by recent changes will **not necessarily** be re-reported.
-
-### The Brute Force broad phase
-The `BruteForceBroadPhase` is the simplest broad phase with a
-$\mathcal{O}(n^2)$ time complexity. It should not be used for anything but
-debugging: if you suspect another broad phase implementation to have a bug, you
-may want to try the brute-force broad phase and compare its result with the
-other one.
 
 ### The DBVT broad phase
 
@@ -96,20 +89,11 @@ objects moving at high frequency but low amplitude will almost never trigger an
 update, at the cost of slightly less tight bounding volumes for interference
 detection.
 
-Creating an empty `DBVTBroadPhase` is simple using the `::new(margin,
-small_keys)` constructor:
+Creating an empty `DBVTBroadPhase` is simple using the `::new(margin)` constructor, where `margin` controls the amount of loosening:
 
 ```rust
 let mut dbvt = DBVTBroadPhase::new(0.02, false);
 ```
-
-The amount of loosening is controlled by the first argument `margin`. The
-second argument `small_keys` is here for optimization purpose as well.  Set it
-to `true` if and only if you know that the integer keys you use to identify
-your objects are small (as in "small enough for them to be used as keys on a
-`Vec` instead of a `HashMap`"). If you are not sure of the values your keys may
-take, set `small_keys` to `false`.
-
 
 The following example creates four balls, adds them to a `DBVTBroadPhase`,
 updates the broad phase, and removes some of them.
@@ -128,43 +112,40 @@ updates the broad phase, and removes some of them.
 /*
  * Create the objects.
  */
-let poss = [ Isometry2::new(Vector2::new(0.0, 0.0), na::zero()),
-             Isometry2::new(Vector2::new(0.0, 0.5), na::zero()),
-             Isometry2::new(Vector2::new(0.5, 0.0), na::zero()),
-             Isometry2::new(Vector2::new(0.5, 0.5), na::zero()) ];
+let poss = [
+    Isometry2::new(Vector2::new(0.0, 0.0), na::zero()),
+    Isometry2::new(Vector2::new(0.0, 0.5), na::zero()),
+    Isometry2::new(Vector2::new(0.5, 0.0), na::zero()),
+    Isometry2::new(Vector2::new(0.5, 0.5), na::zero()),
+];
 
 // We will use the same shape for the four objects.
 let ball = Ball::new(0.5);
 
 /*
  * Create the broad phase.
- *
- * We know we will use small uids (from 0 to 3)so we can pass `true`
- * as the second argument.
  */
-let mut bf = DBVTBroadPhase::new(0.2, true);
+let mut bf = DBVTBroadPhase::new(0.2);
 
-// First parameter:  a unique id for each object.
-// Second parameter: the object bounding box.
-// Third parameter:  some data (here, the id that identify each object).
-bf.deferred_add(0, bounding_volume::aabb(&ball, &poss[0]), 0);
-bf.deferred_add(1, bounding_volume::aabb(&ball, &poss[1]), 1);
-bf.deferred_add(2, bounding_volume::aabb(&ball, &poss[2]), 2);
-bf.deferred_add(3, bounding_volume::aabb(&ball, &poss[3]), 3);
+// First parameter: the object bounding box.
+// Second parameter:  some data (here, the id that identify each object).
+let proxy1 = bf.create_proxy(bounding_volume::aabb(&ball, &poss[0]), 0);
+let proxy2 = bf.create_proxy(bounding_volume::aabb(&ball, &poss[1]), 1);
+let _ = bf.create_proxy(bounding_volume::aabb(&ball, &poss[2]), 2);
+let _ = bf.create_proxy(bounding_volume::aabb(&ball, &poss[3]), 3);
 
 // Update the broad phase.
 // The collision filter (first closure) prevents self-collision.
-bf.update(&mut |a, b| *a != *b, &mut |_, _, _| { });
+bf.update(&mut |a, b| *a != *b, &mut |_, _, _| {});
 
 assert!(bf.num_interferences() == 6);
 
 // Remove two objects.
-bf.deferred_remove(0);
-bf.deferred_remove(1);
+bf.remove(&[proxy1, proxy2], &mut |_, _| {});
 
 // Update the broad phase.
 // The collision filter (first closure) prevents self-collision.
-bf.update(&mut |a ,b| *a != *b, &mut |_, _, _| { });
+bf.update(&mut |a, b| *a != *b, &mut |_, _, _| {});
 
 assert!(bf.num_interferences() == 1)
 ```
@@ -174,43 +155,40 @@ assert!(bf.num_interferences() == 1)
 /*
  * Create the objects.
  */
-let poss = [ Isometry3::new(Vector3::new(0.0, 0.0, 0.0), na::zero()),
-             Isometry3::new(Vector3::new(0.0, 0.5, 0.0), na::zero()),
-             Isometry3::new(Vector3::new(0.5, 0.0, 0.0), na::zero()),
-             Isometry3::new(Vector3::new(0.5, 0.5, 0.0), na::zero()) ];
+let poss = [
+    Isometry3::new(Vector3::new(0.0, 0.0, 0.0), na::zero()),
+    Isometry3::new(Vector3::new(0.0, 0.5, 0.0), na::zero()),
+    Isometry3::new(Vector3::new(0.5, 0.0, 0.0), na::zero()),
+    Isometry3::new(Vector3::new(0.5, 0.5, 0.0), na::zero()),
+];
 
 // We will use the same shape for the four objects.
 let ball = Ball::new(0.5);
 
 /*
  * Create the broad phase.
- *
- * We know we will use small uids (from 0 to 3)so we can pass `true`
- * as the second argument.
  */
-let mut bf = DBVTBroadPhase::new(0.2, true);
+let mut bf = DBVTBroadPhase::new(0.2);
 
-// First parameter:  a unique id for each object.
-// Second parameter: the object bounding box.
-// Third parameter:  some data (here, the id that identify each object).
-bf.deferred_add(0, bounding_volume::aabb(&ball, &poss[0]), 0);
-bf.deferred_add(1, bounding_volume::aabb(&ball, &poss[1]), 1);
-bf.deferred_add(2, bounding_volume::aabb(&ball, &poss[2]), 2);
-bf.deferred_add(3, bounding_volume::aabb(&ball, &poss[3]), 3);
+// First parameter: the object bounding box.
+// Second parameter:  some data (here, the id that identify each object).
+let proxy1 = bf.create_proxy(bounding_volume::aabb(&ball, &poss[0]), 0);
+let proxy2 = bf.create_proxy(bounding_volume::aabb(&ball, &poss[1]), 1);
+let _ = bf.create_proxy(bounding_volume::aabb(&ball, &poss[2]), 2);
+let _ = bf.create_proxy(bounding_volume::aabb(&ball, &poss[3]), 3);
 
 // Update the broad phase.
 // The collision filter (first closure) prevents self-collision.
-bf.update(&mut |a, b| *a != *b, &mut |_, _, _| { });
+bf.update(&mut |a, b| *a != *b, &mut |_, _, _| {});
 
 assert!(bf.num_interferences() == 6);
 
 // Remove two objects.
-bf.deferred_remove(0);
-bf.deferred_remove(1);
+bf.remove(&[proxy1, proxy2], &mut |_, _| {});
 
 // Update the broad phase.
 // The collision filter (first closure) prevents self-collision.
-bf.update(&mut |a ,b| *a != *b, &mut |_, _, _| { });
+bf.update(&mut |a, b| *a != *b, &mut |_, _, _| {});
 
 assert!(bf.num_interferences() == 1)
 ```
@@ -229,7 +207,8 @@ the `NarrowPhase` trait.
 | Method | Description |
 |--      | --          |
 | `.update(...)` | Updates the narrow phase actually performing contact and proximity computation. |
-| `.handle_interaction(..., objs, fk1, fk2, started)` | Tells the narrow phase that the objects given by `objs[fk1]` and `objs[fk2]` start or stop interacting. |
+| `.handle_interaction(..., objs, handle1, handle2, started)` | Tells the narrow phase that the objects given by `objs[handle1]` and `objs[handle2]` start or stop interacting. |
+| `.handle_removal(..., objs, handle1, handle2)` | Tells the narrow phase that the interaction between `objs[handle1]` and `objs[handle2]` stopped because one of them is being removed from the world. |
 | `.contact_pairs(objs)` | Returns all the contact pairs. |
 | `.proximity_pairs(objs)` | Returns all the proximity pairs. |
 
@@ -240,7 +219,7 @@ is set to `false`. It will usually not perform any actual geometric query as
 this is the task of the `.update(...)` method. Both methods take two _signals_
 as arguments: a `ContactSignal` and a `ProximitySignal`. Both are sets of
 callbacks called whenever a contact or proximity starts or stops. The user may
-add their own contact and proximity [event handlers](#event-handling) to those.
+retrieve a list of all events that occurred during an update. Refer to the section on [event handling](#event-handling).
 
 The `DefaultNarrowPhase` is the default implementation of the narrow phase and
 should be suitable for most applications. It handles both persistent proximity
@@ -274,7 +253,7 @@ trait-object of type `ProximityDispatcher` has only one method that may return
 
 | Method                           | Description |
 |--                                | --          |
-| `.get_proximity_algorithm(a, b)` | Returns the persistent proximity determination algorithm dedicated to the shapes `a` and `b`. |
+| `.get_proximity_algorithm(a, b)` | Gets the persistent proximity determination algorithm dedicated to the shapes `a` and `b`. |
 
 The `ProximityAlgorithm` return type is just an alias for a boxed
 `ProximityDetector` trait-object.
@@ -430,17 +409,14 @@ geometrical scene. It groups:
 All those are hidden between a high-level interface so that the user does not
 have to manually modify and synchronize the various collision detection stages.
 An empty collision world is created with the constructor
-`CollisionWorld::new(margin, small_uids)`. Both arguments are only for
-optimization purpose and have the same semantic as their
-[counterparts](#the-dbvt-broad-phase) for the creation of the DBVT broad-phase:
-the `margin` is the amount of loosening for each bounding volume (this does not
+`CollisionWorld::new(margin)`. The `margin` argument is only for
+optimization purpose and has the same semantic as its
+[counterpart](#the-dbvt-broad-phase) for the creation of the DBVT broad-phase:
+it is the amount of loosening for each bounding volume (this does not
 affect the exact geometric shapes). While this value depends on your specific
 application, a value of 0.02 is usually good enough if your objects have an
 average size of 1 (no matter which
-[units](../faq/#what-units-are-used-by-ncollide) you use). The `small_uids`
-flag indicates if your collision object identifiers will be small enough to be
-indices of a `Vec` instead of a `HashMap`. It should be set to `false` if you
-are not sure.
+[units](../faq/#what-units-are-used-by-ncollide) you use).
 
 ## Collision objects
 Instances of the `CollisionObject` structure are the main citizens of the
@@ -449,56 +425,33 @@ its position in space:
 
 | Field               | Description                                                  |
 |--                   | --                                                           |
-| `.position`         | The collision object position in space.                      |
-| `.shape`            | The geometrical shape of the collision object.               |
-| `.collision_groups` | Groups used to prevent interactions with some other objects. |
-| `.query_type`       | The kind of query this object can be involved in.            |
-| `.data`             | User-defined data associated to this object. This will never be modified by **ncollide**. |
+| `.handle()`         | The handle of this collision object on the collision world.  |
+| `.proxy_handle()`   | The handle of this collision object on the broad-phase structure. |
+| `.position()`         | The collision object position in space.                      |
+| `.shape()`            | The geometrical shape of the collision object.               |
+| `.collision_groups()` | Groups used to prevent interactions with some other objects. |
+| `.query_type()`       | The kind of query this object can be involved in.            |
+| `.data()`             | User-defined data associated to the collision object. This will never be modified by **ncollide**. |
+| `.data_mut()`         | Mutable reference to the user-defined data associated to the collision object.
 
-The two fields `.collision_groups` and `.query_type` affect how the object will
+The two methods `.collision_groups()` and `.query_type()` affect how the object will
 interact with the others on the collision world and are detailed in the next
 sections.
 
 A collision object should not be created directly by the user. Instead it
 is initialized internally by the collision world with the
-`CollisionWorld::deferred_add(uid, ...)` method. Its first argument is a unique
-identifier of your choice that allows you to update this collision object
-later. The `CollisionObject` instance created by the world can be retrieved
-using the `.collision_object(uid)` method. Currently, a collision object can
+`CollisionWorld::add(...)` method. The `CollisionObject` instance created by the world can be
+retrieved using the `.collision_object(handle)` method, where `handle` is the the return
+value of the collision world's `.add(...)` method. Currently, a collision object can
 only be moved or removed from the collision world. Future versions of
 **ncollide** will allow you to modify its shape, collision groups, and query
 types as well. All those modifications will wait until the next call to
 `.update()` to be actually performed efficiently:
 
-| Field                              | Description |
-|--                                  | --          |
-| `.deferred_set_position(uid, pos)` | Sets the position of the collision object identified by `uid` at the next update. |
-| `.deferred_remove(uid)`            | Removes the collision object identified by `uid` at the next update. |
-
-Adding an object with the same `uid` as another one already present on the
-collision world will panic. In particular, keep in mind that because object
-removals are deferred until the next update it is necessary to wait for the
-next call to `.update()` in order to be able to re-use a removed object's
-identifier. For example, the following pseudo-code panics:
-
-```rust
-collision_world.deferred_add(0, ...);
-collision_world.update();
-collision_world.deferred_remove(0);
-
-collision_world.deferred_add(0, ...); // Panic! The uid 0 is already present.
-```
-
-While the following will work as expected:
-
-```rust
-collision_world.deferred_add(0, ...);
-collision_world.update();
-collision_world.deferred_remove(0);
-
-collision_world.update();    // Actually remove 0 ...
-collision_world.deferred_add(0, ...); // ... so it can be re-used for another object.
-```
+| Field                     | Description |
+|--                         | --          |
+| `.set_position(handle, pos)` | Sets the position of the collision object identified by `handle`. Collision detection with other objects will occur only at the next update of the collision world. |
+| `.remove(handle)`            | Removes a set of collision object identified by their handles. |
 
 ### Collision groups
 Collision groups are the main way to prevent some objects from interacting with
@@ -702,6 +655,11 @@ narrow phase can be retrieved as well through the collision world:
 | `.contacts()`         | Gets an iterator through the contacts computed by the narrow phase.       |
 
 ## Event handling
+
+<center>
+**Note: since the release of ncollide 0.14, this section is outdated. It will be updated soon.**
+</center>
+
 It is often useful to react when two objects start/stop being in contact or
 when their proximity status change. For example, when two object start
 colliding we might want to play a sound, display a message, apply some IA
@@ -780,7 +738,7 @@ to:
 1. Identify each wall. We give each area a name as a string. This name will be
    directly used by the message printer as the ball enters or leaves the area.
    (Note that instead of a string we could have simply used the collision
-   object `.uid` field to identify the wall.)
+   object `.handle()` method to identify the wall.)
 2. Be able to modify the ball velocity. Because **ncollide** provides immutable
    references to proximity objects involved in a proximity event, we have to
    use a `Cell` to benefit from interior mutability. The ball is the only one

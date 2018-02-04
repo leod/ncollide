@@ -1,4 +1,4 @@
-#! /bin/zsh
+#! /bin/sh
 
 echo "Integrating rust documentation to the website..."
 cssfile=./docs/rustdoc/rustdoc.css
@@ -13,7 +13,6 @@ cat custom_flatly/css/font-awesome-4.0.3.css >> $tmpcssfile
 sed -i 's/margin-left: 230px;//g' $tmpcssfile
 mv $tmpcssfile $cssfile
 
-#files="./docs/rustdoc/ncollide/**/*.html"
 files=`find ./docs/rustdoc -name \*.html -printf '%p '`
 sidebar='<nav class="sidebar">'
 sub='<nav class="sub">'
@@ -43,12 +42,10 @@ do
   <script>
     var the_footer;
     $.get("/rustdoc_ncollide/index.html", function(data) {
-        /* FIXME: use regexp instead. */
         data = data.split("../").join("/");
         data = data.split("..").join("/");
         var $data = $(data);
         $("div#nav_placeholder").prepend($data.find("#common_navbar"));
-        /* $("#footer").html($data.find("footer").parent()); */
     });
   </script>'
 

@@ -43,6 +43,7 @@ The support mapping function is exposed by the `SupportMap` trait.
 | Method                            | Description |
 |--                                 | --          |
 | `.support_point(m, v)`            | Computes the support point (in the direction `v`) of the caller transformed by the transformation matrix `m`. |
+| `.support_point_toward(m, v)`            | Same as `.support_point(...)` except that `v` is already a unit vector. |
 
 Most basic geometric primitives like balls, cubes, cones, and even more complex
 ones like a Minkowski Sum of convex shapes can be described by their support
@@ -612,7 +613,7 @@ _inside_ of it. Other points are _outside_ of the plane.
 
 | Method   | Description  |
 | --          | --        |
-| `.normal()` | The normal of the plane. |
+| `.normal()` | The unit normal of the plane. |
 
 <ul class="nav nav-tabs">
   <li class="active"><a id="tab_nav_link" data-toggle="tab" href="#plane_2D">2D example</a></li>
@@ -626,19 +627,19 @@ _inside_ of it. Other points are _outside_ of the plane.
 <div class="tab-content" markdown="1">
   <div id="plane_2D" class="tab-pane in active">
 ```rust
-let plane = Plane::new(Vector2::new(0.0f32, 1.0));
+let plane = Plane::new(Vector2::<f32>::y_axis());
 
-assert!(plane.normal().x == 0.0);
-assert!(plane.normal().y == 1.0);
+assert!(plane.normal().as_ref().x == 0.0);
+assert!(plane.normal().as_ref().y == 1.0);
 ```
   </div>
   <div id="plane_3D" class="tab-pane">
 ```rust
-let plane = Plane::new(Vector3::new(0.0f32, 1.0, 0.0));
+let plane = Plane::new(Vector3::<f32>::y_axis());
 
-assert!(plane.normal().x == 0.0);
-assert!(plane.normal().y == 1.0);
-assert!(plane.normal().z == 0.0);
+assert!(plane.normal().as_ref().x == 0.0);
+assert!(plane.normal().as_ref().y == 1.0);
+assert!(plane.normal().as_ref().z == 0.0);
 ```
   </div>
 </div>
